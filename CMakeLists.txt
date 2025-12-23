@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_library(tsdb 
     src/series.cpp
+    src/database.cpp
 )
 target_include_directories(tsdb PUBLIC include)
 
