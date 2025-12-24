@@ -1,17 +1,17 @@
 # High-Performance Time-Series Database
 
-A fast, memory-efficient time-series storage engine written in C++17. Designed for financial tick data and similar high-throughput time-series workloads.
+A fast, memory-efficient time-series storage engine written in C++17. Designed for financial tick data and high-throughput workloads where latency matters.
 
 ## Features
 
-- **Columnar storage** for cache-efficient queries
-- **Delta encoding** for timestamp compression
-- **Binary search indexing** for O(log n) range queries
-- **Sub-millisecond query latency** over millions of data points
+- **Columnar storage** — timestamps and values stored separately for cache-efficient sequential access
+- **Delta encoding** — timestamp compression exploiting the regularity of tick data intervals
+- **Binary search indexing** — O(log n) range queries over sorted time-series data
+- **Sub-millisecond latency** — 40µs to query 1,000 points from 10 million
 
 ## Performance
 
-Benchmarked on Apple M-series CPU:
+Benchmarked on Apple M-series CPU with 10 million data points:
 
 | Metric | Result |
 |--------|--------|
@@ -20,9 +20,12 @@ Benchmarked on Apple M-series CPU:
 | Full aggregation (10M points) | 22 ms |
 | Timestamp compression | 1.5x |
 
-Compared to naive linear-scan baseline:
-- **17x faster** range queries
-- **30x faster** aggregations
+Compared against naive row-oriented storage with linear scan:
+
+| Operation | Optimized | Naive | Speedup |
+|-----------|-----------|-------|---------|
+| Range query | 0.35 ms | 6.1 ms | **17x** |
+| Aggregation | 0.18 ms | 5.6 ms | **30x** |
 
 ## Building
 ```bash
@@ -31,17 +34,22 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 make
 ```
 
+## Running
+```bash
+./demo                    # Demo with performance output
+./bench/bench_tsdb        # Google Benchmark suite
+./tests/tests             # Google Test unit tests
+```
+
 ## Usage
 ```cpp
 #include <tsdb/database.hpp>
 
 int main() {
     tsdb::Database db;
-    
-    // Create a series
     db.create_series("AAPL");
     
-    // Append data points
+    // Append tick data (timestamp in nanoseconds, price)
     db.append("AAPL", 1000000000, 150.25);
     db.append("AAPL", 1000001000, 150.30);
     db.append("AAPL", 1000002000, 150.28);
@@ -52,57 +60,49 @@ int main() {
     // Aggregation
     auto stats = db.aggregate("AAPL", 1000000000, 1000002000);
     // stats.sum, stats.avg, stats.min, stats.max, stats.count
-    
-    return 0;
 }
-```
-
-## Running the Demo
-```bash
-./demo
-```
-
-## Running Benchmarks
-```bash
-./bench/bench_tsdb
 ```
 
 ## Architecture
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      Database                           │
-│         std::unordered_map<string, Series>              │
-└─────────────────────────────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────┐
-│                       Series                            │
-│  ┌─────────────────────────────────────────────────┐   │
-│  │  Columnar Storage                                │   │
-│  │  timestamps_: [t1, t2, t3, ...]                  │   │
-│  │  values_:     [v1, v2, v3, ...]                  │   │
-│  └─────────────────────────────────────────────────┘   │
-│                                                         │
-│  • Binary search for O(log n) range lookups            │
-│  • Delta encoding for timestamp compression            │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                        Database                             │
+│           std::unordered_map<string, Series>                │
+└─────────────────────────────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────┐
+│                         Series                              │
+│                                                             │
+│  timestamps_: [t₀, t₁, t₂, t₃, ...]  ← contiguous          │
+│  values_:     [v₀, v₁, v₂, v₃, ...]  ← contiguous          │
+│                                                             │
+│  • Binary search for O(log n) range lookups                │
+│  • Delta encoding for timestamp compression                │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ## Design Decisions
 
-**Why columnar storage?**  
-Time-series queries typically scan timestamps first to find a range, then access values. Columnar layout keeps timestamps contiguous in memory, maximizing cache efficiency during scans.
+**Columnar storage**: When scanning timestamps to find a range, every byte loaded into cache is useful. Row-oriented layout wastes half the cache on values we don't need yet.
 
-**Why delta encoding?**  
-Timestamps in time-series data are often regular (e.g., every millisecond). Storing differences between consecutive timestamps instead of absolute values reduces storage significantly.
+**Delta encoding**: Tick data arrives at regular intervals. Storing deltas instead of absolute timestamps reduces storage—a 1ms interval fits in 2 bytes vs 8 for the full timestamp.
 
-**Why binary search?**  
-Data is append-only and sorted by time. Binary search finds range boundaries in O(log n) vs O(n) for linear scan—critical when querying millions of points.
+**Binary search**: For 10M points, linear scan checks ~5M timestamps on average. Binary search checks 24. That's the difference between 6ms and 40µs.
 
-## Future Improvements
+## Project Structure
+```
+├── include/tsdb/       # Headers: types, series, database, encoding
+├── src/                # Implementation
+├── bench/              # Google Benchmark performance tests
+├── tests/              # Google Test unit tests
+└── examples/           # Demo application
+```
 
-- Value compression (XOR encoding for floats)
-- Time-based segmentation for memory management
+## Future Work
+
+- XOR compression for float values (Gorilla-style)
+- Time-based segmentation
 - Concurrent read/write support
 - Disk persistence
 
