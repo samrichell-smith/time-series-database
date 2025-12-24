@@ -1,6 +1,7 @@
 #include <tsdb/series.hpp>
 #include <algorithm>
 #include <limits>
+#include <tsdb/encoding.hpp>
 
 namespace tsdb {
 
@@ -17,6 +18,12 @@ void Series::append_batch(const std::vector<Point>& points) {
         timestamps_.push_back(p.time);
         values_.push_back(p.value);
     }
+}
+
+std::size_t Series::compressed_size_bytes() const {
+    std::size_t timestamp_bytes = DeltaEncoder::encoded_size_bytes(timestamps_);
+    std::size_t value_bytes = values_.size() * sizeof(Value);  // values not compressed
+    return timestamp_bytes + value_bytes;
 }
 
 std::vector<Point> Series::range(Timestamp start, Timestamp end) const {

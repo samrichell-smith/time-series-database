@@ -21,6 +21,8 @@ public:
     
     std::size_t memory_usage_bytes() const;
 
+    std::size_t compressed_size_bytes() const;
+
 private:
     std::vector<Timestamp> timestamps_;
     std::vector<Value> values_;

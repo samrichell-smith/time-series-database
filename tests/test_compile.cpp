@@ -1,30 +1,42 @@
 #include <tsdb/database.hpp>
+#include <tsdb/encoding.hpp>
 #include <iostream>
+#include <random>
 
 int main() {
     tsdb::Database db;
-    
     db.create_series("AAPL");
-    db.create_series("GOOG");
     
-    db.append("AAPL", 1000, 150.0);
-    db.append("AAPL", 2000, 151.0);
-    db.append("AAPL", 3000, 149.0);
+    // Generate realistic tick data
+    std::mt19937_64 rng(42);
+    std::normal_distribution<double> interval_dist(1'000'000, 100'000);  // ~1ms intervals
+    std::normal_distribution<double> value_dist(0.0, 0.001);
     
-    db.append("GOOG", 1000, 2800.0);
-    db.append("GOOG", 2000, 2810.0);
+    tsdb::Timestamp time = 1'000'000'000'000'000'000LL;
+    double value = 150.0;
     
-    std::cout << "Series count: " << db.series_count() << "\n";
-    std::cout << "Total points: " << db.total_points() << "\n";
+    for (int i = 0; i < 10'000'000; i++) {
+        db.append("AAPL", time, value);
+        time += static_cast<int64_t>(std::max(1.0, interval_dist(rng)));
+        value *= (1.0 + value_dist(rng));
+    }
     
-    auto points = db.range("AAPL", 1000, 2500);
-    std::cout << "AAPL range query: " << points.size() << " points\n";
+    auto& series = db.get_series("AAPL");
     
-    auto agg = db.aggregate("AAPL", 1000, 3000);
-    std::cout << "AAPL aggregate: avg=" << agg.avg << "\n";
+    std::size_t raw_size = series.memory_usage_bytes();
+    std::size_t compressed_size = series.compressed_size_bytes();
     
-    std::cout << "Has AAPL: " << db.has_series("AAPL") << "\n";
-    std::cout << "Has MSFT: " << db.has_series("MSFT") << "\n";
+    std::cout << "Points: " << series.size() << "\n";
+    std::cout << "Raw size: " << raw_size / 1024 / 1024 << " MB\n";
+    std::cout << "Compressed size: " << compressed_size / 1024 / 1024 << " MB\n";
+    std::cout << "Compression ratio: " << static_cast<double>(raw_size) / compressed_size << "x\n";
+    
+    // Query performance check
+    auto points = series.range(series.first_time(), series.first_time() + 1'000'000'000LL);
+    std::cout << "Range query returned: " << points.size() << " points\n";
+    
+    auto agg = series.aggregate(series.first_time(), series.last_time());
+    std::cout << "Average value: " << agg.avg << "\n";
     
     return 0;
 }
