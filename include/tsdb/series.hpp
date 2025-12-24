@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <tsdb/types.hpp>
+#include <stdexcept>
 
 namespace tsdb {
 

@@ -126,3 +126,29 @@ TEST(SeriesTest, MemoryUsage) {
     
     EXPECT_GT(s.memory_usage_bytes(), 0);
 }
+
+TEST(SeriesTest, AppendOutOfOrderThrows) {
+    tsdb::Series s;
+    s.append(2000, 20.0);
+    
+    EXPECT_THROW(s.append(1000, 10.0), std::invalid_argument);
+}
+
+TEST(SeriesTest, AppendDuplicateTimestampThrows) {
+    tsdb::Series s;
+    s.append(1000, 10.0);
+    
+    EXPECT_THROW(s.append(1000, 20.0), std::invalid_argument);
+}
+
+TEST(SeriesTest, FirstTimeEmptyThrows) {
+    tsdb::Series s;
+    
+    EXPECT_THROW(s.first_time(), std::runtime_error);
+}
+
+TEST(SeriesTest, LastTimeEmptyThrows) {
+    tsdb::Series s;
+    
+    EXPECT_THROW(s.last_time(), std::runtime_error);
+}

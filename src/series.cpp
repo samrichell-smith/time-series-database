@@ -6,6 +6,9 @@
 namespace tsdb {
 
 void Series::append(Timestamp time, Value value) {
+    if (!timestamps_.empty() && time <= timestamps_.back()) {
+        throw std::invalid_argument("Timestamp must be greater than last timestamp");
+    }
     timestamps_.push_back(time);
     values_.push_back(value);
 }
@@ -79,10 +82,16 @@ bool Series::empty() const {
 }
 
 Timestamp Series::first_time() const {
+    if (timestamps_.empty()) {
+        throw std::runtime_error("Cannot get first_time of empty series");
+    }
     return timestamps_.front();
 }
 
 Timestamp Series::last_time() const {
+    if (timestamps_.empty()) {
+        throw std::runtime_error("Cannot get last_time of empty series");
+    }
     return timestamps_.back();
 }
 
