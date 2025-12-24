@@ -1,5 +1,7 @@
 # High-Performance Time-Series Database
 
+![CI](https://github.com/samrichell-smith/time-series-database/actions/workflows/ci.yml/badge.svg)
+
 A fast, memory-efficient time-series storage engine written in C++17. Designed for financial tick data and high-throughput workloads where latency matters.
 
 ## Features
