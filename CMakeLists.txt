@@ -12,3 +12,5 @@ target_include_directories(tsdb PUBLIC include)
 
 add_executable(test_compile tests/test_compile.cpp)
 target_link_libraries(test_compile PRIVATE tsdb)
+
+add_subdirectory(bench)
