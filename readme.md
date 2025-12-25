@@ -11,6 +11,14 @@ A fast, memory-efficient time-series storage engine written in C++17. Designed f
 - **Binary search indexing** — O(log n) range queries over sorted time-series data
 - **Sub-millisecond latency** — 40µs to query 1,000 points from 10 million
 
+## Design Decisions
+
+**Columnar storage**: When scanning timestamps to find a range, every byte loaded into cache is useful. Row-oriented layout wastes half the cache on values we don't need yet.
+
+**Delta encoding**: Tick data arrives at regular intervals. Storing deltas instead of absolute timestamps reduces storage—a 1ms interval fits in 2 bytes vs 8 for the full timestamp.
+
+**Binary search**: For 10M points, linear scan checks ~5M timestamps on average. Binary search checks 24. That's the difference between 6ms and 40µs.
+
 ## Performance
 
 Benchmarked on Apple M-series CPU with 10 million data points:
@@ -83,14 +91,6 @@ int main() {
 │  • Delta encoding for timestamp compression                 │
 └─────────────────────────────────────────────────────────────┘
 ```
-
-## Design Decisions
-
-**Columnar storage**: When scanning timestamps to find a range, every byte loaded into cache is useful. Row-oriented layout wastes half the cache on values we don't need yet.
-
-**Delta encoding**: Tick data arrives at regular intervals. Storing deltas instead of absolute timestamps reduces storage—a 1ms interval fits in 2 bytes vs 8 for the full timestamp.
-
-**Binary search**: For 10M points, linear scan checks ~5M timestamps on average. Binary search checks 24. That's the difference between 6ms and 40µs.
 
 ## Project Structure
 ```
