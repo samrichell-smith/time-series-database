@@ -76,11 +76,11 @@ int main() {
 ┌─────────────────────────────────────────────────────────────┐
 │                         Series                              │
 │                                                             │
-│  timestamps_: [t₀, t₁, t₂, t₃, ...]  ← contiguous          │
-│  values_:     [v₀, v₁, v₂, v₃, ...]  ← contiguous          │
+│  timestamps_: [t₀, t₁, t₂, t₃, ...]  ← contiguous           │
+│  values_:     [v₀, v₁, v₂, v₃, ...]  ← contiguous           │
 │                                                             │
-│  • Binary search for O(log n) range lookups                │
-│  • Delta encoding for timestamp compression                │
+│  • Binary search for O(log n) range lookups                 │
+│  • Delta encoding for timestamp compression                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
